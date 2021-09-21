@@ -45,17 +45,61 @@ sum(rsi.all$Event_OS[rsi.all$Received_RT==1 & rsi.all$Site=="glioma"],na.rm=T)
 sum(rsi.all$Event_OS[rsi.all$Received_RT==1 & rsi.all$Site=="pancreas"],na.rm=T)
 sum(rsi.all$Event_OS[rsi.all$Received_RT==1 & rsi.all$Site=="lung"],na.rm=T)
 
+# original
+rsi.all$MGMT_Expression[is.na(rsi.all$MGMT_Expression)]<-5.457623
+
+m0<-(coxph(Surv(Time_OS,Event_OS)~MGMT_Expression+strata(Site),
+           data=rsi.all[rsi.all$Received_RT==1 ,]))
+m1<-(coxph(Surv(Time_OS,Event_OS)~MGMT_Expression+gard+strata(Site),
+           data=rsi.all[rsi.all$Received_RT==1 ,]))
+summary(m1)
+anova(m1,m0)# 
+s1<-summary(m1)
+100*s1$coefficients[2,3]/s1$coefficients[2,1]
+# 36%
+# remove MGMT
+m0<-(coxph(Surv(Time_OS,Event_OS)~1+strata(Site),
+           data=rsi.all[rsi.all$Received_RT==1 ,]))
+m1<-(coxph(Surv(Time_OS,Event_OS)~gard+strata(Site),
+           data=rsi.all[rsi.all$Received_RT==1 ,]))
+summary(m1)
+anova(m1,m0)# 
+s1<-summary(m1)
+100*s1$coefficients[1,3]/s1$coefficients[1,1]
+# 55%
+
+# ignore TN_breast
+m0<-(coxph(Surv(Time_OS,Event_OS)~MGMT_Expression+strata(Site),
+           data=rsi.all[rsi.all$Received_RT==1 & rsi.all$Site!="breast_TN",]))
+m1<-(coxph(Surv(Time_OS,Event_OS)~MGMT_Expression+gard+strata(Site),
+           data=rsi.all[rsi.all$Received_RT==1 & rsi.all$Site!="breast_TN",]))
+summary(m1)
+s1<-summary(m1)
+100*s1$coefficients[2,3]/s1$coefficients[2,1]
+# 43%
+anova(m1,m0)
+
+
+# remove breast cohort and MGMT adjustment
 m0<-(coxph(Surv(Time_OS,Event_OS)~1+strata(Site),
            data=rsi.all[rsi.all$Received_RT==1 & rsi.all$Site!="breast_TN",]))
 m1<-(coxph(Surv(Time_OS,Event_OS)~gard+strata(Site),
                   data=rsi.all[rsi.all$Received_RT==1 & rsi.all$Site!="breast_TN",]))
 summary(m1)
-# there is no signal!
+s1<-summary(m1)
+100*s1$coefficients[1,3]/s1$coefficients[1,1]
+# 76%
 anova(m1,m0)
 m2<-(coxph(Surv(Time_OS,Event_OS)~gard*Site+strata(Site),
            data=rsi.all[rsi.all$Received_RT==1 & rsi.all$Site!="breast_TN",]))
 summary(m2)
 anova(m1,m2)
+
+
+
+
+
+
 
 # now lets move on to the sham GARD story and the idea that GARD is predictive
 # of RT effect
@@ -65,12 +109,16 @@ anova(m1,m2)
 rsi.all$Received_RT[rsi.all$Received_RT==1]<-"Yes"
 rsi.all$Received_RT[rsi.all$Received_RT==0]<-"No"
 
+median(rsi.all$TD[rsi.all$Site=="endometrial" & rsi.all$Received_RT=="Yes"])#45
+mean(rsi.all$TD[rsi.all$Site=="endometrial" & rsi.all$Received_RT=="Yes"])#47
+
+
 rsi.all$TD[rsi.all$Site=="endometrial" & rsi.all$Received_RT=="No"]<-54
 rsi.all$TD[rsi.all$Site=="glioma" & rsi.all$Received_RT=="No"]<-60
 rsi.all$TD[rsi.all$Site=="pancreas" & rsi.all$Received_RT=="No"]<-50
 rsi.all$TD[rsi.all$Site=="breast" & rsi.all$Received_RT=="No"]<-50
 
-rsi.all$n[rsi.all$Site=="endometrial" & rsi.all$Received_RT=="No"]<-27
+rsi.all$n[rsi.all$Site=="endometrial" & rsi.all$Received_RT=="No"]<-22.5
 rsi.all$n[rsi.all$Site=="glioma" & rsi.all$Received_RT=="No"]<-30
 rsi.all$n[rsi.all$Site=="pancreas" & rsi.all$Received_RT=="No"]<-25
 rsi.all$n[rsi.all$Site=="breast" & rsi.all$Received_RT=="No"]<-25
@@ -134,7 +182,7 @@ plot(km0,confint=T,percent=F,atrisk.at=seq(0,12,2),background.horizontal=NULL,
      axis1.at=seq(0,12,2),xlab="Time (Years)",legend=F,logrank=T,
      atrisk.title="No. at Risk",ylab="Recurrence-Free Fraction",xlim=c(0,12),col=c(1,2),
      marktime=T)
-mtext("Breast - Karolinksa")
+mtext("Breast - Karolinska")
 survdiff(Surv(Time,Event)~Received_RT,data=rsi.all[rsi.all$Site=="breast" & 
                                                      rsi.all$Source=="Karolinksa",])
 #p =0.203
@@ -173,7 +221,6 @@ anova(m1b,m1c)
 m1d<-(coxph(Surv(Time_OS,Event_OS)~Received_RT*Site + strata(Site),
             data=rsi.all))
 anova(m1c,m1d)# p = 0.107
-
 
 # Explore local progression
 m2<-(coxph(Surv(Time,Event)~gard + Received_RT + strata(Source),
